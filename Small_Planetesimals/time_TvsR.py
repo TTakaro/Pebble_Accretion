@@ -404,311 +404,234 @@ def TvsR(a = [1e-9,1e-5,1e-2,1e-1],a_au=1,m_suns=1,m_earths=1,pnts=5e3,verb=0):
 def TvsR_sng(alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,r=1e1,out='time',gas_dep=1.,sol_gas_ratio=0.01,sig_p_in=0\
              ,temp_in=0,focus_max=0,alpha_z=0,h_mod=1,shear_off=0,lam_vel=0,b_shear_off=0,extend_rh=1):
     if verbose:
-        print "a = %.3g AU" %a_au
-        print "m_star = %.3g m_sun" %m_suns
-        print "m_core = %.3g" %m_earths
+        print("a = %.3g AU" %a_au)
+        print("m_star = %.3g m_sun" %m_suns)
+        print("m_core = %.3g" %m_earths)
 
 
+    ### Sets disk parameters ###
+    # Unit conversions
+    a_core = fn.au*a_au # Defines semi-major axis
+    m_star = fn.m_sun*m_suns # Defines mass of star
+    r_core = fn.r_earth*((m_earths)**(1./3.)) # Defines radius of core
+    m_core = fn.m_earth*m_earths # Defines mass of core
 
-    a_core = fn.au*a_au
-    m_star = fn.m_sun*m_suns
-    r_core = fn.r_earth*((m_earths)**(1./3.))
-    m_core = fn.m_earth*m_earths
+    rho_obj = 2.0 # Sets density of accreted particles
+    m_obj = (4./3.*np.pi*r**3)*rho_obj # Calculates mass of accreted particles
 
-    rho_obj = 2.0
-
-    #Return derived parameters
-    sig = fn.surf_dens(a_core)/gas_dep
+    # Calculates disk surface densities
+    sig = fn.surf_dens(a_core)/gas_dep # Calculates gas surface density
+    # Calculates solid surface density
     if sig_p_in:
         sig_p = sig_p_in
     else:
         sig_p = sig*sol_gas_ratio
-
+    # Calculates temperature of disk
     if temp_in:
         t = temp_in
     else:
         t =  fn.temp(a_core)
+    # Disk parameters
+    om = fn.omega(m_star,a_core) # Calculates orbital frequency
+    cs = fn.sound_speed(t) # Calculates sound speed
+    h = fn.scale_height(cs,om) # Calculates scale height
+    rho_g = fn.gas_density(sig,h) # Calculates density of gas
+    mfp = fn.mean_free_path(fn.mu,rho_g,fn.cross) # Calculates mean free path 
+    vth = fn.therm_vel(cs) # Calculates thermal velocity
+    v_kep = fn.vkep(m_star, a_core) # Sets keplerian velocity equal to the core velocity (WILL CHANGE)
+    eta = fn.eta(cs,vkep) # Calculates eta, a measure of the local gas pressure support
 
-    om = fn.omega(m_star,a_core)
-    cs = fn.sound_speed(t)
-    h = fn.scale_height(cs,om)
-    rho_g = fn.gas_density(sig,h)
-    mfp = fn.mean_free_path(fn.mu,rho_g,fn.cross)
-    vth = fn.therm_vel(cs)
-    v_core = fn.vkep(m_star,a_core)
-    vg = fn.v_gas(v_core,cs) #FULL gas velocity (not relative to Keplerian). There's no reason we need this. Just use eta*v_k in future.
-    vkep = v_core
-    v_cg = np.absolute(v_core - vg)
-    vrel_i = v_cg
-    v_g_phi = v_cg
-    eta = fn.eta(cs,vkep)
+    # Core parameters
+    v_core = fn.vkep(m_star,a_core) # Sets velocity of core to the keplerian orbital velocity (WILL CHANGE)
+    vg = fn.v_gas(v_core,cs) # Calculates absolute gas velocity. There's no reason we need this. Just use eta*v_k in future.
+    v_cg = np.absolute(v_core - vg) # Calculates core velocity relative to the gas (ignoring turbulence)
+    vrel_i = v_cg # Sets initial velocity of core relative to gas
+    h_r = fn.hill_rad(m_core,a_core,m_star) # Calculates Hill radius
+    b_r = fn.bondi_rad(m_core,cs) # Calculates Bondi radius
 
-    #Build array of Hill Radii -- not an array anymore
-    h_r = fn.hill_rad(m_core,a_core,m_star)
-    # h_r_arr.fill(fn.hill_rad(m_core,a_core,m_star))
-
-    #Build array of Bondi Radii -- not an array anymore
-    # b_rad_arr = np.zeros(pnts)
-    b_r = fn.bondi_rad(m_core,cs)
-    # b_rad_arr.fill(fn.bondi_rad(m_core,cs))
-    b_rad = fn.bondi_rad(m_core,cs)
-
-    #Don't let Bondi radius shrink below size of the core
-    rho_core = 2.0
+    # Prevents Bondi radius from shrinking below size of the core
+    rho_core = 2.0 # Sets density of core
     rad_core = (3./4./np.pi*m_core/rho_core)**(1./3.)
     b_r = max(b_r,rad_core)
 
     if verbose:
-        print "sig = %s" %sig
-        print "T = %s" %t
-        print "om = %s" %om
-        print "cs = %s" %cs
-        print "H = %s" %h
-        print "rho_g = %s" %rho_g
-        print "mfp = %s" %mfp
-        print "vth = %s" %vth
-        print "v_cg = %s" %v_cg
+        print("sig = %s" %sig)
+        print("T = %s" %t)
+        print("om = %s" %om)
+        print("cs = %s" %cs)
+        print("H = %s" %h)
+        print("rho_g = %s" %rho_g)
+        print("mfp = %s" %mfp)
+        print("vth = %s" %vth)
+        print("v_cg = %s" %v_cg)
+        print("\nr = %.7g\n" %r)
 
-    #Plotting Arrays -- not used
-    time_master = []
-    time_off_master = []
-    stl_master = []
-    ke_master = []
-    work_master = []
-
-
-    # per = 2*np.pi/om
-
-    time_arr = []
-    time_off_arr = []
-    stl_arr = []
-    ke_arr = []
-    work_arr = []
-
-    rho_obj = 2.0 #Why is this defined twice?
-    m_obj = (4./3.*np.pi*r**3)*rho_obj
-
-    if verbose:
-        print "\nr = %.7g\n" %r
-
-    #Parameters for caclculating the turbulent gas velocity, see e.g. Ormel and Cuzzi (2007).
+    #Parameters for calculating the turbulent gas velocity, see e.g. Ormel and Cuzzi (2007).
     re_f = fn.re_f(alph,cs,h,vth,mfp)
-    v_turb = fn.turb_vel(alph,cs)
-    v_cg = np.sqrt(v_turb**2 + (vg-v_core)**2)
-    v_gas_tot = np.sqrt(v_turb**2 + (vg-v_core)**2)
+    v_turb = fn.turb_vel(alph,cs) # Calculates turbulent velocity of gas
+    v_cg = np.sqrt(v_turb**2 + (vg - v_core)**2) # Calculates core velocity relative to gas (adding in turbulence)
+    v_gas_tot = np.sqrt(v_turb**2 + (vg - v_core)**2) # Calculates total velocity of gas (WHY IS vg USED FOR THIS?)
 
-    #Calculate stopping time of particle. Solve iteratively if we're in the fluid regime.
-    if r > 9.*mfp/4:
+
+    ### Calculates stopping time of particle ###
+    if r > 9.*mfp/4: # Solve iteratively if we're in the fluid regime
                     #Calculate terminal velocity and stopping time by iterating over force law. I've ignored angle here...
                     delta = 1
                     v_i = vrel_i
                     while np.abs(delta) > .001:
-                        re = fn.rey(r,v_i,vth,mfp)
-                        mobj = fn.obj_mass(r,rho_obj)
-                        dc = fn.drag_c(re)
-                        fd = fn.stokes_ram(r,dc,rho_g,v_i)
-                        t_s = mobj*v_i/fd
+                        re = fn.rey(r,v_i,vth,mfp) # Reynolds number
+                        mobj = fn.obj_mass(r,rho_obj) # Mass of accreting particle
+                        dc = fn.drag_c(re) # Drag coefficient
+                        fd = fn.stokes_ram(r,dc,rho_g,v_i) # Drag force (Ram pressure regime)
+                        t_s = mobj*v_i/fd # Stopping time
                         # st = fn.stl(t_s,per)
-                        v_L_r = fn.v_new_r(eta,vkep,t_s,om)
-                        v_L_phi = fn.v_new_phi(eta,vkep,t_s,om)
-                        v_L = np.sqrt(v_L_r**2 + v_L_phi**2)
-                        t_eddy = (om*(1 + (v_L/v_turb)**2)**.5)**-1
-                        stl = t_s/t_eddy
+                        v_L_r = fn.v_new_r(eta,vkep,t_s,om) # Radial component of laminar velocity
+                        v_L_phi = fn.v_new_phi(eta,vkep,t_s,om) # Phi component of laminar velocity
+                        v_L = np.sqrt(v_L_r**2 + v_L_phi**2) # Total laminar velocity 
+                        t_eddy = (om*(1 + (v_L/v_turb)**2)**.5)**-1 # Eddy crossing time
+                        stl = t_s/t_eddy # Stokes number
                         if stl > 10:
                             v_new_turb = v_turb*np.sqrt(1-(1 + stl)**-1)
                         else:
                             v_new_turb = fn.v_pg(v_turb,stl,re_f)
-                        v_new = np.sqrt(v_L**2 + v_new_turb**2)
+                        v_new = np.sqrt(v_L**2 + v_new_turb**2) # Calculates total velocity, adding laminar and turbulent
                         delta = v_new - v_i #Should really be in terms of fractional change, i.e. delta = (v_new - v_i)/v_i. Shouldn't make a huge different though.
-                        # print delta
                         v_i = v_new
-    else:
+    else: # Applies Epstein drag law if in diffuse regime.
         t_s = fn.ts_eps(rho_obj,rho_g,r,vth)
-        # print "yes"
 
-    # print "t_s = %.7g" %t_s
-    # print v_L
+    # Calculates the laminar velocities from the stopping time.
+    v_L_r = fn.v_new_r(eta,vkep,t_s,om) # Radial component
+    v_L_phi = fn.v_new_phi(eta,vkep,t_s,om) # Phi component
+    v_L_tot = np.sqrt(v_L_r**2 + v_L_phi**2) # Total velocity
 
-    #Velocities calculated from stopping time.
-    v_L_r = fn.v_new_r(eta,vkep,t_s,om)
-    v_L_phi = fn.v_new_phi(eta,vkep,t_s,om)
-    v_L_tot = np.sqrt(v_L_r**2 + v_L_phi**2)
+    t_eddy = (om*(1 + (v_L_tot/v_turb)**2)**.5)**-1 # Calculates eddy crossing time
+    stl = t_s/t_eddy # Calculates Stokes number
 
-    t_eddy = (om*(1 + (v_L_tot/v_turb)**2)**.5)**-1 #Eddy crossing effects
-    stl = t_s/t_eddy
-
-    tau_s = t_s*om
-    stl_arr.append(tau_s)
+    tau_s = t_s*om # Dimensionless stopping time
 
     if stl > 10: #Don't use OC07 expressions for large stopping time, they don't converge to the correct value.
         v_pg_turb = v_turb*np.sqrt(1-(1 + stl)**-1)
     else:
         v_pg_turb = fn.v_pg(v_turb,stl,re_f)
 
-    v_pg = np.sqrt(v_L_tot**2 + v_pg_turb**2)
+    v_pg = np.sqrt(v_L_tot**2 + v_pg_turb**2) # Calculates particle velocity relative to gas 
 
 
-
-    re = fn.rey(r,v_pg,vth,mfp)
-    dc = fn.drag_c(re)
-    forces_obj_cap = fn.drag_force(r,v_pg,dc,rho_g,mfp,vth)
-
-    #Calculate R_WS. Using orbit capture radius is antiquated, and it is set to "infinity" after the calculation.
-
-    # print "st_L = %.7g" %(t_s*om)
-    # print "v_pg = %.7g" %v_pg
-    # print "v_pg_turb = %.7g" %v_pg_turb
-    # print "re = %.7g" %re
-    # print "dc = %.7g" %dc
-    # print "force_obj_cap = %.7g" %forces_obj_cap
-
+    ### Calculate Wind-shearing radius ###
     v_cap = v_gas_tot #Set relevant velocity for orbit maintain
-    re_m = fn.rey(r,v_cap,vth,mfp)
-    dc_m = fn.drag_c(re_m)
-    forces_obj_main = fn.drag_force(r,v_cap,dc_m,rho_g,mfp,vth)
+    re = fn.rey(r,v_cap,vth,mfp) # Calculates Reynolds number
+    dc = fn.drag_c(re) # Calculates drag coefficient
+    forces_obj = fn.drag_force(r,v_cap,dc,rho_g,mfp,vth) # Calculates drag force on particle
 
-    if out == 'vary_sig':
-        st_r_ws = m_obj*v_cap/forces_obj_main
-    # print "force_obj_main = %.7g" %forces_obj_main
+    if out == 'vary_sig': # NOT SURE WHAT THIS DOES???
+        st_r_ws = m_obj*v_cap/forces_obj
 
+    # Calculates drag force on core
     forces_core = fn.drag_force(r_core,v_cg,fn.drag_c(fn.rey(r_core,v_cg,vth,mfp)),rho_g,mfp,vth)
-    # print "force_core = %.7g" %forces_core
 
-    #Calculate differential acceleration between the core and object for both orbit capture and orbit maintain
-    delta_a_cap = np.abs(forces_obj_cap/m_obj - forces_core/m_core) #Is this dividing the forces by mass_objs correctly?
-    delta_a_main = np.abs(forces_obj_main/m_obj - forces_core/m_core) # Same as above. It is, because these aren't arrays anymore.
+    # Calculates differential acceleration between the core and object for orbit maintain
+    delta_a = np.abs(forces_obj/m_obj - forces_core/m_core)
 
-    # print "del_a_cap = %.7g" %delta_a_cap
-    # print "del_a_main = %.7g" %delta_a_main
+    r_ws = fn.wish_radius(delta_a,m_core,m_obj) # Calculates wind-shearing radius
 
-    r_ws_cap = fn.wish_radius(delta_a_cap,m_core,m_obj)
-    r_ws_main = fn.wish_radius(delta_a_main,m_core,m_obj)
+    # Calculates b_shear, the shearing radius
+    if r>9.*mfp/4.:
+        def b_shear_fun(b_shear): #Function to pass to f_solve that determines b_shear
+            v_rel = b_shear*om
+            re = fn.rey(r,v_rel,vth,mfp)
+            dc = fn.drag_c(re)
+            fd = fn.drag_force(r,v_rel,dc,rho_g,mfp,vth)
+            return b_shear - np.sqrt(fn.G*m_core*mobj/fd)
 
-    r_ws_cap = 1e100
+        b_ram = (fn.G*m_core*mobj/(0.5*0.47*rho_g*np.pi*r**2.*om**2.))**(1./4.) #Solution for b_shear in the Ram regime
+        b_an = (3.*tau_s)**(1./3.)*h_r
+        b_guess = min(b_ram,b_an) #Guess is the minimum of the analtyic solution in a linear regime and the solution in Ram
+        b_shear = fsolve(b_shear_fun,b_guess)[0]
 
-    b_shear = 3**(1./3.)*h_r*tau_s**(1./3.)
+    else:
+        b_shear = 3**(1./3.)*h_r*tau_s**(1./3.)
     if b_shear_off:
         b_shear = 1e100
+    
+    # Calculates stability radius as minimum of wind-shearing, shearing, and hill radii
+    min_1 = np.minimum(r_ws,b_shear)
+    r_stab = np.minimum(min_1,h_r)
 
-    # print "r_ws_cap = %.7g" %r_ws_cap
-    # print "r_ws_main = %.7g" %r_ws_main
+    r_atm = np.minimum(b_r, h_r) # Calculates atmospheric radius as minimum of shearing and hill radii. Mickey currently has this coded as maximum, but should be minimum
+    r_acc = np.maximum(r_atm, r_stab) # Calculates Accretion radius as maximum of bondi radius and stability radius
 
-    min_1 = np.minimum(r_ws_cap,r_ws_main) #Always returns r_ws_main
-    min_2 = np.minimum(min_1,b_shear)
-    r_stab = np.minimum(min_2,h_r)
+    v_cross = fn.vkep(m_core,r_acc) # Orbit velocity about core
 
-
-    # print "r_stab = %.7g" %r_stab
-
-    r_acc = np.maximum(b_r,r_stab)
-
-    v_cross = fn.vkep(m_core,r_acc) #Orbit velocity about core
-
-    v_obj_phi = np.abs(v_L_phi + vg) #Velocities relative to Keplerian
-    v_L_iner = np.sqrt((v_obj_phi - v_core)**2 + v_L_r**2)
+    v_obj_phi = np.abs(v_L_phi + vg) # Velocities relative to Keplerian
+    v_L_iner = np.sqrt((v_obj_phi - v_core)**2 + v_L_r**2) # Laminar, relative to inertial frame
     v_p_turb = np.sqrt(v_turb**2 - v_pg_turb**2)
-    v_p = np.sqrt(v_p_turb**2 + v_L_iner**2)
+    v_p = np.sqrt(v_p_turb**2 + v_L_iner**2) # Total body velocity relative to keplerian frame
 
-
-    if lam_vel:
+    if lam_vel: # Eliminates turbulent component in body velocity
         v_p = v_L_iner
         v_pg = v_L_tot
 
+    v_oc = v_p # Velocity of object relative to core (WILL CHANGE FROM RELATIVE TO KEP)
 
-    # if v_oc > v_cross:
-    #     v_enc = v_oc
-    #     v_enc_gas = v_pg
-    # else:
-    #     v_enc = v_cross
-    #     v_enc_gas = v_cross + v_cg
-    #
-    # v_enc_gas = np.maximum(v_pg,v_cross + v_cg)
-
-    v_oc = v_p #Duplicate variables...need to fix
-
-    shear_vel = r_acc*om #Shear velocity
+    shear_vel = r_acc*om # Shear velocity
 
     if shear_off:
         shear_vel = h_r*om
 
-    v_entry = np.maximum(v_oc,shear_vel) #Set v_infty = max(v_pk,v_shear)
+    v_entry = np.maximum(v_oc,shear_vel) # Sets v_infinity = max(v_pk,v_shear)
 
-    v_kick = fn.G*m_core/r_acc/v_entry #Calculate v_enc
+    v_kick = fn.G*m_core/r_acc/v_entry # Calculate v_enc, impulse approximation
 
-    if v_entry > v_cross:
+    if v_entry > v_cross: # Checks if impulse approx OK
         v_enc_gas = max(v_kick,v_pg)
-        v_grav = v_kick
+        v_grav = v_kick # Perturbation velocity from core
     else:
         v_enc_gas = max(v_cross,v_pg)
         v_grav = v_cross
 
+    # Calculates drag force during encounter
+    reys_enc = fn.rey(r,v_enc_gas,vth,mfp) # Reynolds number
+    drag_enc = fn.drag_c(reys_enc) # Drag coefficient
+    force_enc = fn.drag_force(r,v_enc_gas,drag_enc,rho_g,mfp,vth) # Drag force
+    work_enc = force_enc*2*r_acc # Work done by drag over the course of encounter
+    ke = .5*m_obj*v_entry**2 # Kinetic energy of object during encounter
 
-
-    # print "r_cross = %.7g" %r_cross
-    # print "v_cross = %.7g" %v_cross
-    # print "v_p_turb = %.7g" %v_p_turb
-    # print "v_oc = %.7g" %v_oc
-    # print "v_enc = %.7g" %v_enc
-    # print "v_enc_gas = %.7g" %v_enc_gas
-    # print "v_pg = %.7g" %v_pg
-    # print "alpha = %.7g\n" %alph
-    # print "v_entry = %.7g" %v_entry
-
-    reys_enc = fn.rey(r,v_enc_gas,vth,mfp)
-    drag_enc = fn.drag_c(reys_enc)
-    force_enc = fn.drag_force(r,v_enc_gas,drag_enc,rho_g,mfp,vth)
-    work_enc = force_enc*2*r_acc
-    ke = .5*m_obj*v_entry**2
-
+    # Modifies growth time by the ratio of kinetic energy to work done over one orbit
     if (r_acc == h_r and v_entry==shear_vel and extend_rh):
         # r_acc = h_r*min(work_enc/ke,1)
         prob = min(work_enc/ke,1.)
     else:
         prob = 1.
 
-    # print "work_enc = %.7g" %work_enc
-    # print "ke = %.7g" %ke
-    #
-    # h_turb = v_p_turb/om
-
-    if not(alpha_z): #Calculate particle scale height
+    if not(alpha_z): # Calculate particle scale height (if verticl diffusion coefficient is different)
         alpha_z = alph
-    h_turb = min(np.sqrt(alpha_z/tau_s)*h,h)
+    h_turb = min(np.sqrt(alpha_z/tau_s)*h,h) # Turbulent scale height (GET NEW VERSION)
 
-    kh_height = fn.acc_height(h,a_core)*h_mod*min(1.,1/np.sqrt(tau_s))
-    h_disk = np.maximum(h_turb,kh_height)
+    kh_height = fn.acc_height(h,a_core)*h_mod*min(1.,1/np.sqrt(tau_s)) # Kelvin-Helmholtz scale height
+    h_disk = np.maximum(h_turb,kh_height) # Scale height of disk, also called h_p
 
-    acc_height = np.minimum(h_disk,r_acc)
-    # print "h_turb = %.7g" %h_turb
-    # print "h = %.7g" %h
-    #
-    area = 4*r_acc*acc_height
-    # print "area = %.7g" %area
+    acc_height = np.minimum(h_disk,r_acc) # Accretion height
 
-    time = fn.growth_time(m_core,h_disk,sig_p,area,v_entry)*fn.sec_to_years/prob #Modified to account for collision probability
+    area = 4*r_acc*acc_height # Area over which objects are accreted
 
-    # print "time = %.7g" %time
-    focus_time = fn.focus_time(r_core,m_core,h_r,sig_p,om)*fn.sec_to_years #Needs to be updated
+    time = fn.growth_time(m_core,h_disk,sig_p,area,v_entry)*fn.sec_to_years/prob # Modified to account for collision probability
 
-    # if out == 'rate':
-    #     r_GF = np.sqrt(r_core*h_r)
-    #     r_acc_GF = np.maximum(r_acc,r_GF)
-    #     area_GF = 4*r_acc_GF*acc_height
-    #     focus_time = fn.growth_time(m_core,h_disk,sig_p,area_GF,v_entry)*fn.sec_to_years
-    #     time = min(time,focus_time)
-    # else:
-    #     time = min(time,focus_time)
+    focus_time = fn.focus_time(r_core,m_core,h_r,sig_p,om)*fn.sec_to_years # Deprecated, but compares pebble accretion to grav focusing times
 
     if focus_max:
         time = min(time,focus_time)
+    # Checks energy criterion for accretion
     if (((r_stab > b_r and work_enc < ke) or (r_stab < b_r and work_enc > ke)) and not(r_stab == h_r and\
                                                                                                  v_entry==shear_vel and extend_rh and work_enc<ke)):
-        time = 0
-        # print "Particle Cannot Accrete"
+        time = 0 # Really should be infinity, but set to 0 for easy plotting
+        # print("Particle Cannot Accrete")
 
     if verbose:
-        print "time = %.7g" %time
+        print("time = %.7g" %time)
 
+
+    ### Output Section ###
     if out=='time':
         return time,focus_time
     elif out=='rate':
