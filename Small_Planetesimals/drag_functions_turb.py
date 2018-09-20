@@ -248,7 +248,7 @@ def focus_time(r_core,m_core,h_r,sig,om,raf_fast=0):
 
 def print_sci(r,arr,val, name = ""):
     f = interp1d(r,arr[0][:])
-    print name + "%.7g" %f(val)
+    print(name + "%.7g" %f(val))
 
 def t_min(m_core=1,sig_p=20,h_r=r_earth,om=2*np.pi/3.15e7):
     return 2*m_core/(sig_p)/(2*h_r)**2/om*sec_to_years

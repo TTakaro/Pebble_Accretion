@@ -24,9 +24,9 @@ def TvsR(a = [1e-9,1e-5,1e-2,1e-1],a_au=1,m_suns=1,m_earths=1,pnts=5e3,verb=0):
     # m_earths = 1e-1
 
     if verbose:
-        print "a = %.3g AU" %a_au
-        print "m_star = %.3g m_sun" %m_suns
-        print "m_core = %.3g" %m_earths
+        print("a = %.3g AU" %a_au)
+        print("m_star = %.3g m_sun" %m_suns)
+        print("m_core = %.3g" %m_earths)
 
 
 
@@ -111,15 +111,15 @@ def TvsR(a = [1e-9,1e-5,1e-2,1e-1],a_au=1,m_suns=1,m_earths=1,pnts=5e3,verb=0):
 
 
     if verbose:
-        print "sig = %s" %sig
-        print "T = %s" %t
-        print "om = %s" %om
-        print "cs = %s" %cs
-        print "H = %s" %h
-        print "rho_g = %s" %rho_g
-        print "mfp = %s" %mfp
-        print "vth = %s" %vth
-        print "v_cg = %s" %v_cg
+        print("sig = %s" %sig)
+        print("T = %s" %t)
+        print("om = %s" %om)
+        print("cs = %s" %cs)
+        print("H = %s" %h)
+        print("rho_g = %s" %rho_g)
+        print("mfp = %s" %mfp)
+        print("vth = %s" %vth)
+        print("v_cg = %s" %v_cg)
 
 
     #Generate array of radii for plots
@@ -180,9 +180,9 @@ def TvsR(a = [1e-9,1e-5,1e-2,1e-1],a_au=1,m_suns=1,m_earths=1,pnts=5e3,verb=0):
         v_cg = v_gas_tot
 
         if verbose:
-            print "v_turb = %s" %v_turb
-            print "v_cg = %s" %v_cg
-            print "re_f = %s" %re_f
+            print("v_turb = %s" %v_turb)
+            print("v_cg = %s" %v_cg)
+            print("re_f = %s" %re_f)
         v_cg_tmp.fill(v_cg)
 
         for i,rad in enumerate(r):
@@ -385,7 +385,7 @@ def TvsR(a = [1e-9,1e-5,1e-2,1e-1],a_au=1,m_suns=1,m_earths=1,pnts=5e3,verb=0):
     focus_time = fn.focus_time(r_core,m_core,h_r,sig*.01,om)*fn.sec_to_years
 
     if verbose:
-        print focus_time
+        print(focus_time)
     focus_arr = np.zeros(pnts)
     focus_arr.fill(focus_time)
 
@@ -438,7 +438,7 @@ def TvsR_sng(alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,r=1e1,out='time'
     rho_g = fn.gas_density(sig,h) # Calculates density of gas
     mfp = fn.mean_free_path(fn.mu,rho_g,fn.cross) # Calculates mean free path 
     vth = fn.therm_vel(cs) # Calculates thermal velocity
-    v_kep = fn.vkep(m_star, a_core) # Sets keplerian velocity equal to the core velocity (WILL CHANGE)
+    vkep = fn.vkep(m_star, a_core) # Sets keplerian velocity equal to the core velocity (WILL CHANGE)
     eta = fn.eta(cs,vkep) # Calculates eta, a measure of the local gas pressure support
 
     # Core parameters
@@ -654,11 +654,11 @@ def TvsR_sng(alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,r=1e1,out='time'
     elif out=='height':
         return h_turb,kh_height
     elif out=='time_param':
-        return h_disk,sig_p,r_acc,acc_height,v_entry
+        return time,h_disk,sig_p,r_acc,acc_height,v_entry
     elif out=='pcol':
         return 2.*r_acc*v_entry*prob
     else:
-        print "Error"
+        print("Error")
         return
 
 def ts_sto_ram(r,params=[]):
@@ -675,10 +675,10 @@ def ts_sto_ram(r,params=[]):
 def st_solver(st=1,alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,smooth=1,gas_dep=1.,sig_in = 0, temp_in = 0):
 
     if verbose:
-        print "St = %.7g" %st
-        print "a = %.3g AU" %a_au
-        print "m_star = %.3g m_sun" %m_suns
-        print "m_core = %.3g m_earths" %m_earths
+        print("St = %.7g" %st)
+        print("a = %.3g AU" %a_au)
+        print("m_star = %.3g m_sun" %m_suns)
+        print("m_core = %.3g m_earths" %m_earths)
 
     a_core = fn.au*a_au
     m_star = fn.m_sun*m_suns
@@ -725,33 +725,33 @@ def st_solver(st=1,alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,smooth=1,g
     b_rad = fn.bondi_rad(m_core,cs)
 
     if verbose:
-        print "sig = %s" %sig
-        print "T = %s" %t
-        print "om = %s" %om
-        print "cs = %s" %cs
-        print "H = %s" %h
-        print "rho_g = %s" %rho_g
-        print "mfp = %s" %mfp
-        print "vth = %s" %vth
-        print "v_cg = %s\n" %v_cg
+        print("sig = %s" %sig)
+        print("T = %s" %t)
+        print("om = %s" %om)
+        print("cs = %s" %cs)
+        print("H = %s" %h)
+        print("rho_g = %s" %rho_g)
+        print("mfp = %s" %mfp)
+        print("vth = %s" %vth)
+        print("v_cg = %s\n" %v_cg)
 
     r_eps = st*rho_g/rho_obj*vth/om
 
     if verbose:
-        print "r_eps = %.5g" %r_eps
+        print("r_eps = %.5g" %r_eps)
 
     if r_eps < 9.*mfp/4.:
         if verbose:
-            print "Epstein Regime"
+            print("Epstein Regime")
         return r_eps
     elif verbose:
-        print "Not in Epstein"
+        print("Not in Epstein")
 
 
     #Directly calculate v_rel from given St
     t_s = st/om
     if verbose:
-        print "t_s = %.7g" %t_s
+        print("t_s = %.7g" %t_s)
 
     # v_pg_L = np.sqrt(5)/2.*eta*vkep
 
@@ -770,14 +770,14 @@ def st_solver(st=1,alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,smooth=1,g
     v_pg_tot = np.sqrt(v_pg_turb**2 + v_pg_L**2)
 
     if verbose:
-        print "Re_t = %.7g" %re_f
-        print "t_eddy = %.7g" %(t_eddy*om)
-        print "st_L = %.7g" %stl
-        print "v_turb = %.7g" %v_turb
-        print "v_gas_tot = %.7g" %v_gas_tot
-        print "v_pg_L = %.7g" %v_pg_L
-        print "v_pg_turb = %.7g" %v_pg_turb
-        print "v_pg_tot = %.7g" %v_pg_tot
+        print("Re_t = %.7g" %re_f)
+        print("t_eddy = %.7g" %(t_eddy*om))
+        print("st_L = %.7g" %stl)
+        print("v_turb = %.7g" %v_turb)
+        print("v_gas_tot = %.7g" %v_gas_tot)
+        print("v_pg_L = %.7g" %v_pg_L)
+        print("v_pg_turb = %.7g" %v_pg_turb)
+        print("v_pg_tot = %.7g" %v_pg_tot)
 
     # if smooth:
     def ts_zero(r,params):
@@ -798,10 +798,10 @@ def st_solver(st=1,alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,smooth=1,g
 def st_rad(rad=1e0,alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,smooth=1,sig_in = 0,temp_in = 0,no_ram=0):
 
     if verbose:
-        print "rad = %.7g" %rad
-        print "a = %.3g AU" %a_au
-        print "m_star = %.3g m_sun" %m_suns
-        print "m_core = %.3g m_earths" %m_earths
+        print("rad = %.7g" %rad)
+        print("a = %.3g AU" %a_au)
+        print("m_star = %.3g m_sun" %m_suns)
+        print("m_core = %.3g m_earths" %m_earths)
 
     a_core = fn.au*a_au
     m_star = fn.m_sun*m_suns
@@ -847,27 +847,27 @@ def st_rad(rad=1e0,alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,smooth=1,s
     b_rad = fn.bondi_rad(m_core,cs)
 
     if verbose:
-        print "sig = %s" %sig
-        print "T = %s" %t
-        print "om = %s" %om
-        print "cs = %s" %cs
-        print "H = %s" %h
-        print "rho_g = %s" %rho_g
-        print "mfp = %s" %mfp
-        print "vth = %s" %vth
-        print "v_cg = %s\n" %v_cg
+        print("sig = %s" %sig)
+        print("T = %s" %t)
+        print("om = %s" %om)
+        print("cs = %s" %cs)
+        print("H = %s" %h)
+        print("rho_g = %s" %rho_g)
+        print("mfp = %s" %mfp)
+        print("vth = %s" %vth)
+        print("v_cg = %s\n" %v_cg)
 
     if rad < 9.*mfp/4.:
         t_s = fn.ts_eps(rho_obj,rho_g,rad,vth)
         st = t_s*om
         if verbose:
-            print "Epstein Regime"
-            print "t_s = %.5g" %t_s
-            print "St = %.5g" %st
+            print("Epstein Regime")
+            print("t_s = %.5g" %t_s)
+            print("St = %.5g" %st)
         return t_s*om
     else:
         if verbose:
-            print "Fluid Regime"
+            print("Fluid Regime")
 
         if no_ram:
             t_s = 4.*rho_obj*rad**2./(9.*rho_g*vth*mfp)
@@ -939,7 +939,7 @@ def min_mass(alph = 1e-100,a_au=1,m_suns=1,st=1e-1,verbose=0,focus=False,t_disp=
     pnts_2 = 150
     m_range = [-5,1]
 
-    print 1*m_guess
+    print(1*m_guess)
 
     if m_guess:
         m_arr = np.logspace(max(np.log10(0.5*m_guess),-5),np.log10(1.5*m_guess))
@@ -955,10 +955,10 @@ def min_mass(alph = 1e-100,a_au=1,m_suns=1,st=1e-1,verbose=0,focus=False,t_disp=
     om = fn.omega(m_star_CGS,a_core_CGS)
 
     if verbose:
-        print "a = %.7g AU" %a_au
-        print "M* = %.7g M_sun" %m_suns
-        print "sig = %.7g" %sig
-        print "om = %s" %om
+        print("a = %.7g AU" %a_au)
+        print("M* = %.7g M_sun" %m_suns)
+        print("sig = %.7g" %sig)
+        print("om = %s" %om)
 
     if m_extend:
         m_arr = np.logspace(-6,7,num=pnts)
@@ -971,7 +971,7 @@ def min_mass(alph = 1e-100,a_au=1,m_suns=1,st=1e-1,verbose=0,focus=False,t_disp=
             # r_core_CGS = fn.r_earth*((M)**(1./3.))
             r_core_CGS = (3.0*m_core_CGS/4./np.pi/rho_s)**(1./3.)
             h_r = fn.hill_rad(m_core_CGS,a_core_CGS,m_star_CGS)
-            print r_core_CGS,h_r,m_core_CGS,sig_p,om
+            print(r_core_CGS,h_r,m_core_CGS,sig_p,om)
             time_arr[i] = fn.focus_time(r_core_CGS,m_core_CGS,h_r,sig_p,om)*fn.sec_to_years
 
             if np.where(time_arr > 2.5e6)[0].size == pnts:
@@ -1065,9 +1065,9 @@ def rate_total(alph = 1e-100,a_au=1,m_suns=1,m_earths=1,verbose=0,gas_dep=1.,sol
                rs_max_in=0,rs_min_in=0):
 
     if verbose:
-        print "a = %.3g AU" %a_au
-        print "m_star = %.3g m_sun" %m_suns
-        print "m_core = %.3g" %m_earths
+        print("a = %.3g AU" %a_au)
+        print("m_star = %.3g m_sun" %m_suns)
+        print("m_core = %.3g" %m_earths)
 
     a_core = fn.au*a_au
     m_star = fn.m_sun*m_suns
@@ -1138,7 +1138,7 @@ def rate_odeint(m,t,p):
     alph,a_au,m_suns,verbose = p
     rate = rate_total(alph = alph,a_au=a_au,m_suns=m_suns,m_earths=m)
     if verbose:
-        print rate
+        print(rate)
     return rate
 
 def MvsT(a_au=1e0,m0=1e-3,m_suns=1e0,alpha=1e-100,stop_time=2.5e6,pnts=1e4,verbose=0,out='times'):
@@ -1146,7 +1146,7 @@ def MvsT(a_au=1e0,m0=1e-3,m_suns=1e0,alpha=1e-100,stop_time=2.5e6,pnts=1e4,verbo
     # times = np.linspace(0,stop_time,num=pnts)
     times = np.concatenate(([0], np.logspace(1,np.log10(stop_time),num=pnts)))
 
-    print times
+    print(times)
     p = [alpha,a_au,m_suns,verbose]
 
     wsol = odeint(rate_odeint,m0,times,args=(p,))
