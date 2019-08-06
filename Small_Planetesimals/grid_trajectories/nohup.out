@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "impact_param_testing.py", line 331, in <module>
+    b_array[i] = test_impact_params(size, a_AU=a_core_AU, m_st=m_star_suns, m_c=1e-4)
+  File "impact_param_testing.py", line 262, in test_impact_params
+    x_init = opt.fsolve(x_eqn,b)[0] + a_core
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/scipy/optimize/minpack.py", line 139, in fsolve
+    res = _root_hybr(func, x0, args, jac=fprime, **options)
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/Extras/lib/python/scipy/optimize/minpack.py", line 236, in _root_hybr
+    warnings.warn(msg, RuntimeWarning)
+RuntimeWarning: The iteration is not making good progress, as measured by the 
+  improvement from the last ten iterations.
