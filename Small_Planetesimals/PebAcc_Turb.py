@@ -3,11 +3,28 @@ import numpy as np
 from scipy.optimize import fsolve
 from scipy.integrate import odeint
 
+def d_V_12(t_1=1.,t_2=1.,t_L=1,Re=1e8):
+    """Function for reproducing Eqn. (16) in OC07. Might need to add more input parameters"""
+    t_eta = Re**(-0.5)*t_L
+    if (t_1 <= t_eta) and (t_2 <= t_eta):
+        return np.sqrt(t_L / t_eta * (t_1 - t_2)**2)
+    elif (t_1 > t_eta) and (t_1 < t_L):
+        y_a = 1.6
+        eps = t_1 / t_2
+        #print("This is the intermediate regime. Don't use it!")
+        return np.sqrt(2 * y_a - (1 + eps) + 2/(1 + eps) * (1/(1 + y_a) + eps**3/(y_a + eps))) * np.sqrt(t_1)
+    elif (t_1 >= t_L):
+        return np.sqrt(1/(1 + t_1) + 1/(1 + t_2))
+    else:
+        #print("Something's broken. Probably an issue with St_core.")#, t_eta, t_1, t_2)
+        return np.sqrt(1/(1 + t_1) + 1/(1 + t_2))
+    #else:
+    #    return "Error! No regime found."
 
 class Disk:
     """ This class contains all of the properties of the protoplanetary disk. """
     def __init__(self, alpha=1e-100, a_core_au=1, m_star_solarmasses=1, gas_dep=1., sol_gas_ratio=0.01,
-                 sig_p_in=0, temp_in=0):
+                 sig_p_in=0, sig_g_in=0, temp_in=0):
         """ List of old names -> new names:
             alph -> alpha
             m_suns -> m_star_solarmasses
@@ -26,7 +43,8 @@ class Disk:
         self.a_core = a_core_au * fn.au # Converts semi-major axis into cgs units
 
         ### Set disk parameters ###
-        self.sig_gas = fn.surf_dens(self.a_core)/gas_dep # Calculates gas surface density
+        if sig_g_in: self.sig_gas = sig_g_in
+        else: self.sig_gas = fn.surf_dens(self.a_core)/gas_dep # Calculates gas surface density
         if sig_p_in: self.sig_solid = sig_p_in # Calculates solid surface density
         else: self.sig_solid = self.sig_gas * sol_gas_ratio
         
@@ -43,21 +61,21 @@ class Disk:
         self.v_th = fn.therm_vel(self.cs) # Thermal velocity
         self.v_kep = fn.vkep(self.m_star, self.a_core) # Keplerian velocity of core
         self.eta = fn.eta(self.cs, self.v_kep) # η, a measure of the local gas pressure support
-        self.v_core = fn.vkep(self.m_star, self.a_core) # Sets velocity of core to the keplerian velocity [WILL CHANGE]
-        self.v_gas_lam = fn.v_gas(self.v_core, self.cs) # Absolute laminar gas velocity. There's no reason we need this. Just use eta*v_k in future.
-        self.v_core_gas_lam = np.absolute(self.v_core - self.v_gas_lam) # Core velocity relative to the gas (ignoring turbulence)
-        self.v_rel_i = self.v_core_gas_lam # Sets initial velocity of core relative to gas
+        #self.v_core = fn.vkep(self.m_star, self.a_core) # Sets velocity of core to the keplerian velocity [WILL CHANGE]
+        #self.v_gas_lam = fn.v_gas(self.v_core, self.cs) # Absolute laminar gas velocity. There's no reason we need this. Just use eta*v_k in future.
+        #self.v_core_gas_lam = np.absolute(self.v_core - self.v_gas_lam) # Core velocity relative to the gas (ignoring turbulence)
+        self.v_rel_i = self.v_kep # Sets initial velocity of core relative to gas
 
         # Turbulent gas parameters, see e.g. Ormel and Cuzzi (2007)
         self.re_f = fn.re_f(alpha, self.cs, self.H, self.v_th, self.mfp) # Reynolds number, MAYBE?
         self.v_gas_turb = fn.turb_vel(alpha, self.cs) # Turbulent velocity of gas
-        self.v_core_gas = np.sqrt(self.v_gas_turb**2 + (self.v_gas_lam - self.v_core)**2) # Core velocity relative to gas
-        self.v_gas_tot = np.sqrt(self.v_gas_turb**2 + (self.v_gas_lam - self.v_core)**2) # Total velocity of gas
+        #self.v_core_gas = np.sqrt(self.v_gas_turb**2 + (self.v_gas_lam - self.v_core)**2) # Core velocity relative to gas
+        self.v_gas_tot = np.sqrt(self.v_gas_turb**2 + (self.eta * self.v_kep)**2) # Total velocity of gas
 
 class Core(Disk):
     """ This class contains all of the properties of an accreting core. """
     def __init__(self, a_core_au=1, m_core_earthmasses=1, alpha=1e-100, m_star_solarmasses=1, gas_dep=1.,
-                 sol_gas_ratio=0.01, rho_core=2., sig_p_in=0, temp_in=0, r_shear_off=0, extend_rh=1, alpha_z=0, h_mod=1):
+                 sol_gas_ratio=0.01, rho_core=2., sig_p_in=0, sig_g_in=0, temp_in=0, r_shear_off=0, extend_rh=1, alpha_z=0, h_mod=1):
         """ List of old names -> new names:
             m_earths -> m_core_earthmasses
             h_r -> r_hill
@@ -93,7 +111,7 @@ class Core(Disk):
             acc_height -> H_acc
             area -> area_acc
             time -> t_acc """
-        super().__init__(alpha, a_core_au, m_star_solarmasses, gas_dep, sol_gas_ratio, sig_p_in, temp_in)
+        super().__init__(alpha, a_core_au, m_star_solarmasses, gas_dep, sol_gas_ratio, sig_p_in, sig_g_in, temp_in)
         self.r_shear_off = r_shear_off
         self.extend_rh = extend_rh
         self.alpha_z = alpha_z
@@ -101,12 +119,14 @@ class Core(Disk):
 
         self.m_core = m_core_earthmasses * fn.m_earth # Converts core mass into cgs units
         self.r_core = ((3 * self.m_core)/(4 * np.pi * rho_core))**(1/3) # Calculates radius of core
+        #print("Radius: ", self.r_core, m_core_earthmasses)
         # Used to be self.r_core = (m_core_earthmasses**(1./3)) * fn.r_earth. MAKE SURE STILL RIGHT
         
         ### Set core parameters ###
         self.r_hill = fn.hill_rad(self.m_core, self.a_core, self.m_star) # Hill radius
         self.r_bondi = fn.bondi_rad(self.m_core, self.cs) # Bondi radius
         self.r_bondi = max(self.r_bondi, self.r_core) # Prevents Bondi radius from shrinking below core radius
+        self.rho_core = rho_core
 
 
     def t_stop(self, s, rho_obj=2.):
@@ -122,7 +142,7 @@ class Core(Disk):
                 f_d = fn.stokes_ram(s, dc, self.rho_gas, v_i) # Drag force (ram pressure regime)
                 t_s = m_obj*v_i/f_d # Stopping time
                 # st = fn.stl(t_s, per)
-                v_r_lam = fn.v_new_r(self.eta, self.v_kep, t_s, self.om) # Radial component of laminar velocity
+                v_r_lam = fn.v_new_r(self.eta, self.v_kep, t_s, self.om) # Radial component of laminar velocity (particle rel. to gas)
                 v_phi_lam = fn.v_new_phi(self.eta, self.v_kep, t_s, self.om) # Phi component of laminar velocity
                 v_lam = np.sqrt(v_r_lam**2 + v_phi_lam**2) # Total laminar velocity
                 t_eddy = (self.om * (1 + (v_lam/self.v_gas_turb)**2)**.5)**-1 # Eddy crossing time
@@ -132,40 +152,52 @@ class Core(Disk):
                 else:
                     v_new_turb = fn.v_pg(self.v_gas_turb, stl, self.re_f)
                 v_new = np.sqrt(v_lam**2 + v_new_turb**2) # Calculates total velocity, adding laminar and turbulent
-                delta = (v_new - v_i)/v_i # This was changed from v_new - v_i. MAKE SURE STILL WORKS
+                delta = (v_new - v_i)/v_i # This was changed from v_new - v_i
                 v_i = v_new
-            self.t_s = t_s
+            t_s = t_s
+
+            #if np.isnan(t_s) or stl > 1e5:
+            #    t_s = 1e10 * t_eddy
+            #    stl = 1e10
+            #print("Fluid: ", t_s)
         else: # Applies Epstein drag law if in diffuse regime
-            self.t_s = fn.ts_eps(rho_obj, self.rho_gas, s, self.v_th)
-        
+            t_s = fn.ts_eps(rho_obj, self.rho_gas, s, self.v_th)
+            #print("Epstein: ", t_s, rho_obj, self.rho_gas, s, self.v_th)
+
         # Calculate laminar velocities from converged stopping time.
-        self.v_r_lam = fn.v_new_r(self.eta, self.v_kep, self.t_s, self.om) # Radial component
-        self.v_phi_lam = fn.v_new_phi(self.eta, self.v_kep, self.t_s, self.om) # Phi component
-        self.v_lam = np.sqrt(self.v_r_lam**2 + self.v_phi_lam**2) # Total velocity
+        v_r_lam = fn.v_new_r(self.eta, self.v_kep, t_s, self.om) # Radial component
+        v_phi_lam = fn.v_new_phi(self.eta, self.v_kep, t_s, self.om) # Phi component
+        #print(v_r_lam, v_phi_lam)
+        v_lam = np.sqrt(v_r_lam**2 + v_phi_lam**2) # Total velocity
 
-        self.t_eddy = (self.om * (1 + (self.v_lam/self.v_gas_turb)**2)**.5)**-1 # Eddy crossing time
-        self.stl = self.t_s/self.t_eddy
-        self.tau_s = self.t_s * self.om # Dimensionless stopping time
+        t_eddy = (self.om * (1 + (v_lam/self.v_gas_turb)**2)**.5)**-1 # Eddy crossing time
+        stl = t_s/t_eddy
+        tau_s = t_s * self.om # Dimensionless stopping time
 
-        if self.stl > 10: # Avoids using OC07 expressions for large stopping time
-            self.v_obj_gas_turb = self.v_gas_turb * np.sqrt(1 - (1 + self.stl)**-1)
+        if stl > 10: # Avoids using OC07 expressions for large stopping time
+            v_obj_gas_turb = self.v_gas_turb * np.sqrt(1 - (1 + stl)**-1)
         else:
-            self.v_obj_gas_turb = fn.v_pg(self.v_gas_turb, self.stl, self.re_f)
-        self.v_obj_gas = np.sqrt(self.v_lam**2 + self.v_obj_gas_turb**2)
+            v_obj_gas_turb = fn.v_pg(self.v_gas_turb, stl, self.re_f)
+        v_obj_gas = np.sqrt(v_lam**2 + v_obj_gas_turb**2)
+        return np.array([t_s, v_r_lam, v_phi_lam, v_lam, t_eddy, stl, tau_s, v_obj_gas_turb, v_obj_gas])
 
-        return self.t_s
+
+    def drag_force(self, s, vrel_i, rho_g, mfp, vth):
+        re = fn.rey(s, vrel_i, vth, mfp)
+        dc = fn.drag_c(re)
+        if s > 9.*mfp/4.:
+            fd = fn.stokes_ram(s,dc,rho_g,vrel_i)
+        else:
+            fd = fn.epstein_drag(s,rho_g,vrel_i,vth)
+        return fd
 
 
     def r_wish(self, s, rho_obj=2.):
         """ Calculates wind-shearing radius, given particle size s. """
-        v_cap = self.v_gas_tot # Set relevant velocity for orbit maintain HUH?
-        self.re = fn.rey(s, v_cap, self.v_th, self.mfp) # Reynolds number
-        self.dc = fn.drag_c(self.re) # Drag coefficient
-        self.f_drag_obj = fn.drag_force(s, v_cap, self.dc, self.rho_gas, self.mfp, self.v_th)
-
+        v_cap = self.v_gas_tot # Set relevant velocity for orbit capture
+        self.f_drag_obj = self.drag_force(s, v_cap, self.rho_gas, self.mfp, self.v_th)
         # Drag force on core
-        self.f_drag_core = fn.drag_force(self.r_core, self.v_core_gas, fn.drag_c(fn.rey(self.r_core, self.v_core_gas,
-                                         self.v_th, self.mfp)), self.rho_gas, self.mfp, self.v_th)
+        self.f_drag_core = self.drag_force(self.r_core, self.v_core_gas, self.rho_gas, self.mfp, self.v_th)
 
         self.m_obj = (4./3.*np.pi*s**3)*rho_obj # Calculates mass of accreted object
         self.delta_a = np.abs(self.f_drag_obj/self.m_obj - self.f_drag_core/self.m_core) # Differential acceleration between core and object
@@ -206,19 +238,36 @@ class Core(Disk):
 
         self.r_atm = np.minimum(self.r_bondi, self.r_hill) # Calculates atmospheric radius as minimum of shearing and hill radii. Mickey currently has this coded as maximum, but should be minimum
         self.r_acc = np.maximum(self.r_atm, self.r_stab) # Calculates Accretion radius as maximum of bondi radius and stability radius
+        self.r_acc = np.maximum(self.r_acc, self.r_core) # Make sure that the accretion radius doesn't get below the physical radius
         return self.r_acc
 
 
-    def set_velocities(self):
+    def set_velocities(self, disp=0):
         """ Calculates a bunch of velocities, given particle size s. """
         self.v_cross = fn.vkep(self.m_core, self.r_acc) # Orbit velocity about core
 
-        self.v_obj_phi = np.abs(self.v_phi_lam + self.v_gas_lam) # Object velocity relative to Keplerian
-        self.v_lam_iner = np.sqrt((self.v_obj_phi - self.v_core)**2 + self.v_r_lam**2) # Laminar, relative to inertial frame
-        self.v_obj_turb = np.sqrt(self.v_gas_turb**2 - self.v_obj_gas_turb**2) # WHICH FRAME IS THIS?
-        self.v_obj = np.sqrt(self.v_obj_turb**2 + self.v_lam_iner**2) # Total body velocity relative to Keplerian
+        self.v_obj_phi = -self.eta * self.v_kep * (1/(1 + self.tau_s**2)) # Object velocity relative to Keplerian #np.abs(self.v_phi_lam + self.v_gas_lam)
+        self.v_core_phi = -self.eta * self.v_kep * (1/(1 + self.tau_s_core**2)) # Core velocity relative to Keplerian #np.abs(self.v_phi_lam_core + self.v_gas_lam)
 
-        self.v_obj_core = self.v_obj # Velocity of object relative to core [WILL CHANGE FROM RELATIVE TO KEP]
+        self.v_lam_iner = np.sqrt((self.v_obj_phi - self.v_core_phi)**2 + self.v_r_lam**2) # Laminar, relative to inertial frame
+        #self.v_obj_turb = np.sqrt(self.v_gas_turb**2 - self.v_obj_gas_turb**2) # WHICH FRAME IS THIS?
+        #self.v_obj = np.sqrt(self.v_obj_turb**2 + self.v_lam_iner**2) # Total body velocity relative to Keplerian
+
+        self.v_obj_core_lam = np.sqrt((self.v_obj_phi - self.v_core_phi)**2 + (self.v_r_lam - self.v_r_lam_core)**2) # Velocity of object relative to core
+        v_turb_mean = self.v_gas_turb * d_V_12(t_1=self.stl_core,t_2=self.stl,t_L=1,Re=self.re_f) # Use expresioons from Ormel Cuzzi 2007 to get relative turbulent particle velocity from stopping time of core #np.sqrt(self.v_gas_turb**2 - self.v_core_gas_turb**2)
+        if False: #disp:
+            self.v_obj_core_turb = disp * v_turb_mean * np.random.standard_t(1) #np.random.normal(0, disp * v_turb_mean)
+            theta = 2 * np.pi * np.random.rand() # Randomly draw angle between radial vector and v_turb direction
+            self.v_obj_core = np.sqrt((self.v_obj_phi - self.v_core_phi - np.sin(theta)*self.v_obj_core_turb)**2
+                + (self.v_r_lam - self.v_r_lam_core - np.cos(theta)*self.v_obj_core_turb)**2)
+            #if self.v_obj_core_turb < 0:
+            #    self.v_obj_core = np.sqrt(self.v_obj_core_lam**2 - self.v_obj_core_turb**2)
+            #else:
+            #    self.v_obj_core = np.sqrt(self.v_obj_core_lam**2 + self.v_obj_core_turb**2)
+        else:
+            self.v_obj_core_turb = v_turb_mean
+            self.v_obj_core = np.sqrt(self.v_obj_core_lam**2 + self.v_obj_core_turb**2)
+        
         self.v_shear = self.r_acc * self.om # Shear velocity
 
         self.v_inf = np.maximum(self.v_obj_core, self.v_shear) # Sets v_infinity
@@ -251,7 +300,7 @@ class Core(Disk):
     def scale_heights(self):
         """ Calculate the turbulent scale height, Kelvin-Helmholtz scale height, disk scale height,
             accretion height, and accretion area. """
-        if not(self.alpha_z): # Checks if vertical turbulence is different from other
+        if not(self.alpha_z): # Checks if vertical turbulence is different from other directions
             self.alpha_z = self.alpha
         self.H_turb = min(np.sqrt(self.alpha_z/self.tau_s) * self.H, self.H) # Turbulent scale height
         # Kelvin-Helmholtz scale height
@@ -268,24 +317,90 @@ class Core(Disk):
                       * fn.sec_to_years/self.prob)
 
         # Check energy criterion for accretion
-        if (((self.r_stab > self.r_bondi and self.work_enc < self.ke) or (self.r_stab < self.r_bondi and
+        if (((self.r_stab < self.r_bondi and # Excludes bottom right region, then left region (in size ratio vs size plots)
               self.work_enc > self.ke)) and not
            (self.r_stab == self.r_hill and self.v_inf == self.v_shear and self.extend_rh and self.work_enc < self.ke)):
             self.t_acc = 0 # Really should be infinity, but set to 0 for easy plotting
+        #if ((self.r_atm < self.r_stab and self.work_enc < self.ke) or (self.r_atm > self.r_stab)):
+        #    self.t_acc = 0 # Really should be infinity, but set to 0 for easy plotting
         return self.t_acc
 
-    def main(self, s, rho_obj=2.):
+    def disp_velocities(self, s, disp=0, n_iter=100):
+        v_turb_mean = self.v_gas_turb * d_V_12(t_1=self.stl_core,t_2=self.stl,t_L=1,Re=self.re_f)
+        turb_vels = disp * v_turb_mean * np.random.standard_t(1, size=n_iter)
+        thetas = 2 * np.pi * np.random.rand(n_iter) # Randomly draw angle between radial vector and v_turb direction
+        #vel_array = np.zeros(n_iter)
+
+        vel_array = np.sqrt((self.v_obj_phi - self.v_core_phi - np.sin(thetas)*turb_vels)**2
+                + (self.v_r_lam - self.v_r_lam_core - np.cos(thetas)*turb_vels)**2)
+
+        v_inf_arr = np.zeros(n_iter)
+        v_enc_arr = np.zeros(n_iter)
+        v_gas_enc_arr = np.zeros(n_iter)
+        v_grav_arr = np.zeros(n_iter)
+        re_enc_arr = np.zeros(n_iter)
+        dc_enc_arr = np.zeros(n_iter)
+        f_drag_enc_arr = np.zeros(n_iter)
+        work_enc_arr = np.zeros(n_iter)
+        ke_arr = np.zeros(n_iter)
+        prob_arr = np.zeros(n_iter)
+        t_acc_arr = np.zeros(n_iter)
+        for i in range(n_iter):
+            v_inf_arr[i] = np.maximum(vel_array[i], self.v_shear) # Sets v_infinity
+            v_enc_arr[i] = fn.G * self.m_core/self.r_acc/v_inf_arr[i] # Applies impulse approx to calculate encounter velocity
+            if v_inf_arr[i] > self.v_cross: # Checks if impulse approximation is OK
+                v_gas_enc_arr[i] = max(v_enc_arr[i], self.v_obj_gas)
+                v_grav_arr[i] = v_enc_arr[i]
+            else:
+                v_gas_enc_arr[i] = max(self.v_cross, self.v_obj_gas)
+                v_grav_arr[i] = self.v_cross
+            re_enc_arr[i] = fn.rey(s, v_gas_enc_arr[i], self.v_th, self.mfp) # Reynolds number during encounter
+            dc_enc_arr[i] = fn.drag_c(re_enc_arr[i]) # Drag coefficient during encounter
+            f_drag_enc_arr[i] = fn.drag_force(s, v_gas_enc_arr[i], dc_enc_arr[i], self.rho_gas, self.mfp, self.v_th) # Drag force
+            work_enc_arr[i] = 2 * f_drag_enc_arr[i] * self.r_acc # Work done by drag over course of encounter
+            ke_arr[i] = .5 * self.m_obj * v_inf_arr[i]**2 # Kinetic energy of object during encounter
+
+            # Modify growth time by the ratio of the kinetic energy to work done over one orbit
+            if (self.r_acc == self.r_hill and v_inf_arr[i] == self.v_shear and self.extend_rh):
+                prob_arr[i] = min(work_enc_arr[i]/ke_arr[i], 1.)
+            else:
+                prob_arr[i] = 1.
+            
+            t_acc_arr[i] = (fn.growth_time(self.m_core, self.H_disk, self.sig_solid, self.area_acc, v_inf_arr[i])
+                      * fn.sec_to_years/prob_arr[i])
+
+        # Check energy criterion for accretion
+        for i in range(n_iter):
+            if (((self.r_stab > self.r_bondi and work_enc_arr[i] < ke_arr[i]) or (self.r_stab < self.r_bondi and
+                work_enc_arr[i] > ke_arr[i])) and not
+            (self.r_stab == self.r_hill and v_inf_arr[i] == self.v_shear and self.extend_rh and work_enc_arr[i] < ke_arr[i])):
+                t_acc_arr[i] = 0 # Really should be infinity, but set to 0 for easy plotting
+
+        n_accreted = t_acc_arr[np.nonzero(t_acc_arr)].size
+        if n_accreted == 0:
+            #print(t_acc_arr)
+            self.t_acc = 0
+        else:
+            t_acc_true = (n_iter/n_accreted) * np.mean(t_acc_arr[np.nonzero(t_acc_arr)])
+            self.t_acc = t_acc_true
+ 
+
+    def main(self, s, rho_obj=2., disp=0):
         """ Runs each method defined for this class, in order to calculate and set all of the attributes
             of the object. """
-        t_s = self.t_stop(s, rho_obj)
-        r_ws = self.r_wish(s, rho_obj)
-        r_sh = self.r_shear(s, rho_obj)
+        ts_arr = self.t_stop(s, rho_obj=rho_obj)
+        self.t_s, self.v_r_lam, self.v_phi_lam, self.v_lam, self.t_eddy, self.stl, self.tau_s, self.v_obj_gas_turb, self.v_obj_gas = ts_arr
+        ts_c_arr = self.t_stop(self.r_core, self.rho_core)
+        self.t_s_core, self.v_r_lam_core, self.v_phi_lam_core, self.v_lam_core, self.t_eddy_core, self.stl_core, self.tau_s_core, self.v_core_gas_turb, self.v_core_gas = ts_c_arr
+        #print(self.t_eddy_core, (self.om * (1 + (self.v_lam_core/self.v_gas_turb)**2)**.5)**-1, self.om, self.v_lam_core, self.v_gas_turb, self.v_r_lam_core, self.v_phi_lam_core)
+        r_ws = self.r_wish(s, rho_obj=rho_obj)
+        r_sh = self.r_shear(s, rho_obj=rho_obj)
         r_acc = self.r_accretion()
-        self.set_velocities()
-        self.encounter(s, rho_obj)
+        self.set_velocities(disp=disp)
+        self.encounter(s, rho_obj=rho_obj)
         self.scale_heights()
         t_acc = self.t_accretion()
+        if (t_acc == 0) and (disp != 0):
+            self.disp_velocities(s, disp=disp, n_iter=1000)
 
-
-
-# Cut flags: verbose=0, focus_max=0, shear_off=0, lam_vel=0):
+# Cut flags: verbose=0, focus_max=0, shear_off=0, lam_vel=0

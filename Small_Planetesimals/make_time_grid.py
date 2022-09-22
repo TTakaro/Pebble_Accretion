@@ -8,8 +8,8 @@ from matplotlib.ticker import ScalarFormatter
 from time_TvsR import *
 from matplotlib.colors import LogNorm
 
-m_range = [-5,2]
-r_range = [-4,4]
+m_range = [-20,-2]
+r_range = [-4,8]
 m_arr = np.logspace(m_range[0],m_range[1],num=1000)
 r_arr = np.logspace(r_range[0],r_range[1],num=300)
 time_arr = np.zeros((len(m_arr),len(r_arr)))
@@ -19,7 +19,7 @@ master_arr = []
 
 m_star = 1
 semi_major = 30.
-alph = 1e-1
+alph = 1e-4
 
 param_arr = [m_range[0],m_range[1],r_range[0],r_range[1],m_star,semi_major,alph]
 #Print output from TvsR
@@ -33,7 +33,7 @@ for i,M in enumerate(m_arr):
 # time_arr[0,len(r_arr)] = m_range[0]
 # time_arr[1,len(r_arr)] = m_range[1]
 
-param_str = 'rev6_a_%.1f_M_*_%.1f_alph_%.5f_long' % (semi_major,m_star,alph)
+param_str = 'a_%.1f_M_*_%.1f_alph_%.5f_long' % (semi_major,m_star,alph)
 # param_str = r'$a = %.1f$ AU, $M_* = %.1fM_{\odot}$, $\alpha = %.5f$'\
 # % (semi_major,m_star,alph)
 
@@ -41,8 +41,8 @@ master_arr.append(np.asarray(m_range))
 # master_arr.append(r_arr)
 master_arr.append(time_arr)
 
-np.savetxt('txt_files/' + param_str + '_grid_2.txt',time_arr)
-f = open('txt_files/' + param_str + '_grid_2_params.txt','w')
+np.savetxt('Data/' + param_str + '_grid_3.txt',time_arr)
+f = open('Data/' + param_str + '_grid_3_params.txt','w')
 for num in param_arr:
     f.write(str(num) +'\n')
 f.close()
